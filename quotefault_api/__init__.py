@@ -3,8 +3,9 @@ import json
 import os
 import random
 from datetime import datetime, timedelta
-from functools import wraps
+from functools import wraps, lru_cache
 
+import csh_ldap
 import markdown
 import requests
 from flask import Flask, request, jsonify, session, redirect, url_for
@@ -33,7 +34,7 @@ auth = OIDCAuthentication(app,
                           client_registration_info=app.config['OIDC_CLIENT_CONFIG'])
 
 app.secret_key = 'submission'  # allows message flashing, var not actually used
-
+_ldap = csh_ldap.CSHLDAP(app.config["LDAP_DN"], app.config["LDAP_PW"])
 
 # create the quote table with all relevant columns
 class Quote(db.Model):
@@ -263,6 +264,28 @@ def generate_api_key(reason: str):
     return "There's already a key with this reason for this user!"
 
 
+@app.route('/members/all', methods=['GET'])
+@auth.oidc_auth
+def all_members():
+    return ldap_get_all_members(), 200
+
+
+@app.route('/members/refresh', methods=['GET'])
+@auth.oidc_auth
+def reset():
+    """
+    Invalidates the cache on the current users
+    :return:
+    """
+    uid = session['userinfo'].get('preferred_username')
+    account = ldap_get_member(uid)
+    if ldap_is_rtp(account):
+        ldap_get_all_members.cache_clear()
+        ldap_get_member.cache_clear()
+        return jsonify({"status": "success"}), 200
+    return jsonify({"status": "failure", "message": "unauthorized"}), 403
+
+
 @app.route('/logout')
 @auth.oidc_logout
 def logout():
@@ -364,3 +387,25 @@ def query_builder(start: str, end: str, submitter: str, speaker: str, id_num=-1)
         query = query.filter_by(speaker=speaker)
 
     return query
+
+
+@lru_cache(maxsize=8192)
+def ldap_get_all_members():
+    return {member.uid: member.cn for member in _ldap.get_group('member').get_members()}
+
+
+@lru_cache(maxsize=8192)
+def ldap_get_member(username: str):
+    return _ldap.get_member(username, uid=True)
+
+
+def _ldap_is_member_of_group(member, group):
+    group_list = member.get("memberOf")
+    for group_dn in group_list:
+        if group == group_dn.split(",")[0][3:]:
+            return True
+    return False
+
+
+def ldap_is_rtp(account):
+    return _ldap_is_member_of_group(account, "rtp")

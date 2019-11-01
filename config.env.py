@@ -17,9 +17,11 @@ SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI', 'sqlite:///{
 SQLALCHEMY_POOL_RECYCLE = 500
 
 # OpenID Connect SSO config
-OIDC_ISSUER = os.environ.get('API_QUOTEFAULT_OIDC_ISSUER', 'https://sso.csh.rit.edu/realms/csh')
+OIDC_ISSUER = os.environ.get('API_QUOTEFAULT_OIDC_ISSUER', 'https://sso.csh.rit.edu/auth/realms/csh')
 OIDC_CLIENT_CONFIG = {
     'client_id': os.environ.get('API_QUOTEFAULT_OIDC_CLIENT_ID', 'quotefault-api'),
     'client_secret': os.environ.get('API_QUOTEFAULT_OIDC_CLIENT_SECRET', ''),
     'post_logout_redirect_uris': [os.environ.get('API_QUOTEFAULT_OIDC_LOGOUT_REDIRECT_URI', 'https://quotefault-api.csh.rit.edu/logout')]
 }
+LDAP_DN = os.environ.get('LDAP_BIND_DN', "")
+LDAP_PW = os.environ.get('LDAP_BIND_PW', "")
