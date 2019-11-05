@@ -29,8 +29,7 @@ def cached_members():
         return ldap_cached_get_all_members(), 200
     if request.method == 'DELETE':
         uid = session['userinfo'].get('preferred_username')
-        account = ldap_get_member(uid)
-        if ldap_is_rtp(account):
+        if ldap_is_rtp(uid):
             ldap_cached_get_all_members.cache_clear()
             ldap_get_member.cache_clear()
             return jsonify({"status": "success"}), 200

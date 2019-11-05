@@ -25,6 +25,20 @@ class Quote(db.Model):
         self.speaker = speaker
 
 
+class Vote(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    quote_id = db.Column(db.Integer)
+    voter = db.Column(db.String(50))
+    direction = db.Column(db.Integer)
+    updated_time = db.Column(db.DateTime)
+
+    def __init__(self, quote_id, voter, direction):
+        self.updated_time = datetime.now()
+        self.quote_id = quote_id
+        self.voter = voter
+        self.direction = direction
+
+
 class APIKey(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     hash = db.Column(db.String(64), unique=True)

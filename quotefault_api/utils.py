@@ -4,7 +4,7 @@ from functools import wraps, lru_cache
 from flask import session, jsonify
 
 from quotefault_api import _ldap
-from quotefault_api.models import APIKey, Quote
+from quotefault_api.models import db, APIKey, Quote, Vote
 
 
 def check_key(func):
@@ -54,6 +54,15 @@ def return_json(quote: Quote):
     }
 
 
+def return_vote(vote: Vote) -> dict:
+    return {
+        'voter': vote.voter,
+        'direction': vote.direction,
+        'quote_id': vote.quote_id,
+        'updated_time': str(vote.updated_time)
+    }
+
+
 def parse_as_json(quotes: list, quote_json=None) -> list:
     """
     Builds a list of Quotes as JSON to be returned to the user requesting them
@@ -67,6 +76,51 @@ def parse_as_json(quotes: list, quote_json=None) -> list:
         quote_json.append(return_json(quote))
     return jsonify(quote_json)
 
+
+def parse_as_json_with_votes(quotes: list, current_user: str, quote_json=None):
+    """
+    Parses a quote in the same manner as parse_as_json(), but includes number
+    of votes and whether the specified user has voted on a quote
+    :param quotes: list of quotes (probably should be a query
+    :param current_user: the user currently logged in (lying is not allowed and will be shunned)
+    :param quote_json: apparently this is used with the other parse_as_json()...?
+    :return: a list of jsonified quotes
+    """
+    if quote_json is None:
+        quote_json = []
+    for quote in quotes:
+        quote_json.append(return_json(quote))
+        votes = Vote.query.filter_by(quote_id=quote.id)
+        quote_json[len(quote_json)-1]["votes"] = sum(vote.direction
+                                                     if vote.quote_id == quote.id
+                                                     else 0 for vote in votes)
+        direction = 0
+        for vote in votes:
+            if vote.quote_id == quote.id and vote.voter == current_user:
+                direction = vote.direction
+        quote_json[len(quote_json)-1]["direction"] = direction
+    return jsonify(quote_json)
+
+
+def return_quote_with_votes(quote: Quote, current_user: str) -> dict:
+    votes = Vote.query.filter_by(quote_id=quote.id)
+    num_votes = sum(vote.direction
+                    if vote.quote_id == quote.id
+                    else 0 for vote in votes)
+    direction = 0
+    for vote in votes:
+        if vote.quote_id == quote.id and vote.voter == current_user:
+            direction = vote.direction
+
+    return {
+        'id': quote.id,
+        'quote': quote.quote,
+        'submitter': quote.submitter,
+        'speaker': quote.speaker,
+        'quoteTime': quote.quote_time,
+        'votes': num_votes,
+        'direction': direction
+    }
 
 def check_key_unique(owner: str, reason: str) -> bool:
     keys = APIKey.query.filter_by(owner=owner, reason=reason).all()
@@ -122,6 +176,37 @@ def query_builder(start: str, end: str, submitter: str, speaker: str, id_num=-1)
     return query
 
 
+def create_quote(submitter: str, speaker: str, quote: str) -> Quote or dict:
+    error = False
+    error_message = ""
+    if not speaker:
+        error = True
+        error_message = "missing speaker"
+    elif not quote:
+        error = True
+        error_message = "missing quote"
+    elif submitter == speaker:
+        error = True
+        error_message = "you can't quote yourself"
+    elif Quote.query.filter_by(quote=quote).first():
+        error = True
+        error_message = "quote already exists"
+    elif not ldap_is_member(speaker):
+        error = True
+        error_message = "speaker doesn't exist"
+    elif len(quote) > 200:
+        error = True
+        error_message = "quote is too long"
+    if error:
+        return jsonify({'status': 'error',
+                        'message': error_message}), 422
+    new_quote = Quote(submitter, quote, speaker)
+    db.session.add(new_quote)
+    db.session.flush()
+    db.session.commit()
+    return return_json(new_quote), 201
+
+
 @lru_cache(maxsize=8192)
 def ldap_cached_get_all_members():
     return {member.uid: member.cn for member in _ldap.get_group('member').get_members()}
@@ -144,5 +229,14 @@ def _ldap_is_member_of_group(member, group):
     return False
 
 
-def ldap_is_rtp(account):
+def ldap_is_member(username: str) -> bool:
+    try:
+        _ldap.get_member(username, uid=True)
+    except KeyError:
+        return False
+    return True
+
+
+def ldap_is_rtp(username):
+    account = ldap_get_member(username)
     return _ldap_is_member_of_group(account, "rtp")
