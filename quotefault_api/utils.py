@@ -85,44 +85,8 @@ def parse_as_json(quotes: list, quote_json=None, current_user=None) -> list:
     """
     if quote_json is None:
         quote_json = []
-        print("SETTING QUOTE JSON")
     for quote in quotes:
-        print(type(quote_json))
-        quote_json.append(return_quote_json(quote))
-        votes = Vote.query.filter_by(quote_id=quote.id)
-        quote_json[len(quote_json) - 1]["votes"] = sum(vote.direction
-                                                       if vote.quote_id == quote.id
-                                                       else 0 for vote in votes)
-        direction = 0
-        for vote in votes:
-            if vote.quote_id == quote.id and vote.voter == current_user:
-                direction = vote.direction
-        quote_json[len(quote_json) - 1]["direction"] = direction
-    return jsonify(quote_json)
-
-
-def parse_as_json_with_votes(quotes: list, current_user: str, quote_json=None):
-    """
-    Parses a quote in the same manner as parse_as_json(), but includes number
-    of votes and whether the specified user has voted on a quote
-    :param quotes: list of quotes (probably should be a query
-    :param current_user: the user currently logged in (lying is not allowed and will be shunned)
-    :param quote_json: apparently this is used with the other parse_as_json()...?
-    :return: a list of jsonified quotes
-    """
-    if quote_json is None:
-        quote_json = []
-    for quote in quotes:
-        quote_json.append(return_quote_json(quote))
-        votes = Vote.query.filter_by(quote_id=quote.id)
-        quote_json[len(quote_json)-1]["votes"] = sum(vote.direction
-                                                     if vote.quote_id == quote.id
-                                                     else 0 for vote in votes)
-        direction = 0
-        for vote in votes:
-            if vote.quote_id == quote.id and vote.voter == current_user:
-                direction = vote.direction
-        quote_json[len(quote_json)-1]["direction"] = direction
+        quote_json.append(return_quote_json(quote, current_user=current_user))
     return jsonify(quote_json)
 
 
@@ -180,7 +144,7 @@ def query_builder(start: str, end: str, submitter: str, speaker: str, id_num=-1)
     return query
 
 
-def create_quote(submitter: str, speaker: str, quote: str) -> Quote or dict:
+def flask_create_quote(submitter: str, speaker: str, quote: str):
     error = False
     error_message = ""
     if not speaker:
