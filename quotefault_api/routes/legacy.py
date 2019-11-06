@@ -17,7 +17,7 @@ from quotefault_api import auth
 from quotefault_api.models import db
 from quotefault_api.models import Quote, APIKey
 from quotefault_api.utils import check_key, query_builder, parse_as_json, \
-    return_json, get_metadata, check_key_unique
+    return_quote_json, get_metadata, check_key_unique
 
 legacy = Blueprint('legacy', __name__)
 
@@ -78,7 +78,7 @@ def create_quote():
         db.session.flush()
         db.session.commit()
         # Returns the json of the quote
-        return jsonify(return_json(new_quote)), 201
+        return jsonify(return_quote_json(new_quote)), 201
     return "You need to actually fill in your fields.", 400
 
 
@@ -114,7 +114,7 @@ def random_quote():
     if not quotes:
         return "none"
     random_index = random.randint(0, len(quotes))
-    return jsonify(return_json(quotes[random_index]))
+    return jsonify(return_quote_json(quotes[random_index]))
 
 
 @legacy.route('/<api_key>/newest', methods=['GET'])
@@ -132,7 +132,7 @@ def newest():
     query = query_builder(date, None, submitter, speaker).order_by(Quote.id.desc())
     if not query.all():
         return "none"
-    return jsonify(return_json(query.first()))
+    return jsonify(return_quote_json(query.first()))
 
 
 @legacy.route('/<api_key>/<qid>', methods=['GET'])
@@ -147,7 +147,7 @@ def quote_id(qid: int):
     query = query_builder(None, None, None, None, id_num=qid)
     if not query.all():
         return "none"
-    return jsonify(return_json(query.first()))
+    return jsonify(return_quote_json(query.first()))
 
 
 @legacy.route('/<api_key>/markov', methods=['GET'])

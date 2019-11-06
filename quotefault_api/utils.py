@@ -38,71 +38,14 @@ def get_metadata() -> dict:
     return metadata
 
 
-def return_json(quote: Quote):
+def return_quote_json(quote: Quote, current_user=None):
     """
     Returns a Quote Object as JSON/Dict
     :param quote: The quote object being formatted
+    :param current_user: The current user; used to determine whether that use voted on the quote
     :return: Returns a dictionary of the quote object formatted to return as
     JSON
     """
-    return {
-        'id': quote.id,
-        'quote': quote.quote,
-        'submitter': quote.submitter,
-        'speaker': quote.speaker,
-        'quoteTime': quote.quote_time,
-    }
-
-
-def return_vote(vote: Vote) -> dict:
-    return {
-        'voter': vote.voter,
-        'direction': vote.direction,
-        'quote_id': vote.quote_id,
-        'updated_time': str(vote.updated_time)
-    }
-
-
-def parse_as_json(quotes: list, quote_json=None) -> list:
-    """
-    Builds a list of Quotes as JSON to be returned to the user requesting them
-    :param quotes: List of Quote Objects
-    :param quote_json: List of Quote Objects as dicts to return as JSON
-    :return: Returns a list of Quote Objects as dicts to return as JSON
-    """
-    if quote_json is None:
-        quote_json = []
-    for quote in quotes:
-        quote_json.append(return_json(quote))
-    return jsonify(quote_json)
-
-
-def parse_as_json_with_votes(quotes: list, current_user: str, quote_json=None):
-    """
-    Parses a quote in the same manner as parse_as_json(), but includes number
-    of votes and whether the specified user has voted on a quote
-    :param quotes: list of quotes (probably should be a query
-    :param current_user: the user currently logged in (lying is not allowed and will be shunned)
-    :param quote_json: apparently this is used with the other parse_as_json()...?
-    :return: a list of jsonified quotes
-    """
-    if quote_json is None:
-        quote_json = []
-    for quote in quotes:
-        quote_json.append(return_json(quote))
-        votes = Vote.query.filter_by(quote_id=quote.id)
-        quote_json[len(quote_json)-1]["votes"] = sum(vote.direction
-                                                     if vote.quote_id == quote.id
-                                                     else 0 for vote in votes)
-        direction = 0
-        for vote in votes:
-            if vote.quote_id == quote.id and vote.voter == current_user:
-                direction = vote.direction
-        quote_json[len(quote_json)-1]["direction"] = direction
-    return jsonify(quote_json)
-
-
-def return_quote_with_votes(quote: Quote, current_user: str) -> dict:
     votes = Vote.query.filter_by(quote_id=quote.id)
     num_votes = sum(vote.direction
                     if vote.quote_id == quote.id
@@ -121,6 +64,65 @@ def return_quote_with_votes(quote: Quote, current_user: str) -> dict:
         'votes': num_votes,
         'direction': direction
     }
+
+
+def return_vote(vote: Vote) -> dict:
+    return {
+        'voter': vote.voter,
+        'direction': vote.direction,
+        'quote_id': vote.quote_id,
+        'updated_time': str(vote.updated_time)
+    }
+
+
+def parse_as_json(quotes: list, quote_json=None, current_user=None) -> list:
+    """
+    Builds a list of Quotes as JSON to be returned to the user requesting them
+    :param quotes: List of Quote Objects
+    :param quote_json: List of Quote Objects as dicts to return as JSON
+    :param current_user: the currently logged in user
+    :return: Returns a list of Quote Objects as dicts to return as JSON
+    """
+    if quote_json is None:
+        quote_json = []
+    for quote in quotes:
+        quote_json.append(return_quote_json(quote))
+        votes = Vote.query.filter_by(quote_id=quote.id)
+        quote_json[len(quote_json) - 1]["votes"] = sum(vote.direction
+                                                       if vote.quote_id == quote.id
+                                                       else 0 for vote in votes)
+        direction = 0
+        for vote in votes:
+            if vote.quote_id == quote.id and vote.voter == current_user:
+                direction = vote.direction
+        quote_json[len(quote_json) - 1]["direction"] = direction
+    return jsonify(quote_json)
+
+
+def parse_as_json_with_votes(quotes: list, current_user: str, quote_json=None):
+    """
+    Parses a quote in the same manner as parse_as_json(), but includes number
+    of votes and whether the specified user has voted on a quote
+    :param quotes: list of quotes (probably should be a query
+    :param current_user: the user currently logged in (lying is not allowed and will be shunned)
+    :param quote_json: apparently this is used with the other parse_as_json()...?
+    :return: a list of jsonified quotes
+    """
+    if quote_json is None:
+        quote_json = []
+    for quote in quotes:
+        quote_json.append(return_quote_json(quote))
+        votes = Vote.query.filter_by(quote_id=quote.id)
+        quote_json[len(quote_json)-1]["votes"] = sum(vote.direction
+                                                     if vote.quote_id == quote.id
+                                                     else 0 for vote in votes)
+        direction = 0
+        for vote in votes:
+            if vote.quote_id == quote.id and vote.voter == current_user:
+                direction = vote.direction
+        quote_json[len(quote_json)-1]["direction"] = direction
+    return jsonify(quote_json)
+
 
 def check_key_unique(owner: str, reason: str) -> bool:
     keys = APIKey.query.filter_by(owner=owner, reason=reason).all()
@@ -204,7 +206,7 @@ def create_quote(submitter: str, speaker: str, quote: str) -> Quote or dict:
     db.session.add(new_quote)
     db.session.flush()
     db.session.commit()
-    return return_json(new_quote), 201
+    return return_quote_json(new_quote), 201
 
 
 @lru_cache(maxsize=8192)
