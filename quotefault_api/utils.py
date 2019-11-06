@@ -85,7 +85,9 @@ def parse_as_json(quotes: list, quote_json=None, current_user=None) -> list:
     """
     if quote_json is None:
         quote_json = []
+        print("SETTING QUOTE JSON")
     for quote in quotes:
+        print(type(quote_json))
         quote_json.append(return_quote_json(quote))
         votes = Vote.query.filter_by(quote_id=quote.id)
         quote_json[len(quote_json) - 1]["votes"] = sum(vote.direction

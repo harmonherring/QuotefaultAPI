@@ -21,7 +21,9 @@ app.secret_key = 'submission'
 # pylint: disable=wrong-import-position
 from quotefault_api.routes.legacy import legacy
 from quotefault_api.routes.members import members
+from quotefault_api.routes.quotes import quotes
 # pylint: enable=wrong-import-position
 
 app.register_blueprint(legacy)
 app.register_blueprint(members, url_prefix='/members')
+app.register_blueprint(quotes, url_prefix='/quotes')
