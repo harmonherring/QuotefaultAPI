@@ -1,10 +1,10 @@
 from datetime import datetime, timedelta
 
-from functools import wraps, lru_cache
+from functools import wraps
 from flask import session, jsonify
 
-from quotefault_api import _ldap
 from quotefault_api.models import db, APIKey, Quote, Vote
+from quotefault_api.ldap import ldap_is_member
 
 
 def check_key(func):
@@ -207,38 +207,3 @@ def create_quote(submitter: str, speaker: str, quote: str) -> Quote or dict:
     db.session.flush()
     db.session.commit()
     return return_quote_json(new_quote), 201
-
-
-@lru_cache(maxsize=8192)
-def ldap_cached_get_all_members():
-    return {member.uid: member.cn for member in _ldap.get_group('member').get_members()}
-
-
-def ldap_get_all_members():
-    return {member.uid: member.cn for member in _ldap.get_group('member').get_members()}
-
-
-@lru_cache(maxsize=8192)
-def ldap_get_member(username: str):
-    return _ldap.get_member(username, uid=True)
-
-
-def _ldap_is_member_of_group(member, group):
-    group_list = member.get("memberOf")
-    for group_dn in group_list:
-        if group == group_dn.split(",")[0][3:]:
-            return True
-    return False
-
-
-def ldap_is_member(username: str) -> bool:
-    try:
-        _ldap.get_member(username, uid=True)
-    except KeyError:
-        return False
-    return True
-
-
-def ldap_is_rtp(username):
-    account = ldap_get_member(username)
-    return _ldap_is_member_of_group(account, "rtp")

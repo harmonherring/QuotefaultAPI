@@ -5,7 +5,7 @@
 from flask import Blueprint, jsonify, session, request
 
 from quotefault_api import auth
-from quotefault_api.utils import ldap_get_member, ldap_cached_get_all_members, \
+from quotefault_api.ldap import ldap_get_member, ldap_cached_get_all_members, \
     ldap_get_all_members, ldap_is_rtp
 
 members = Blueprint('members', __name__)
