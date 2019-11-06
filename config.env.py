@@ -23,5 +23,7 @@ OIDC_CLIENT_CONFIG = {
     'client_secret': os.environ.get('API_QUOTEFAULT_OIDC_CLIENT_SECRET', ''),
     'post_logout_redirect_uris': [os.environ.get('API_QUOTEFAULT_OIDC_LOGOUT_REDIRECT_URI', 'https://quotefault-api.csh.rit.edu/logout')]
 }
+
+# LDAP
 LDAP_DN = os.environ.get('LDAP_BIND_DN', "")
 LDAP_PW = os.environ.get('LDAP_BIND_PW', "")

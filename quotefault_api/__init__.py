@@ -19,8 +19,8 @@ _ldap = csh_ldap.CSHLDAP(app.config["LDAP_DN"], app.config["LDAP_PW"])
 app.secret_key = 'submission'
 
 # pylint: disable=wrong-import-position
-from quotefault_api.legacy import legacy
-from quotefault_api.members import members
+from quotefault_api.routes.legacy import legacy
+from quotefault_api.routes.members import members
 # pylint: enable=wrong-import-position
 
 app.register_blueprint(legacy)
